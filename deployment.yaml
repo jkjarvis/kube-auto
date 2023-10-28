@@ -1,8 +1,14 @@
 services:
-  app:
+- service_1:
     image: nginx
     ports:
-    - 8081:8081
+    - null
     volumes:
-    - /tmp:/app
+    - null
+- service_2:
+    image: nginx
+    ports:
+    - null
+    volumes:
+    - null
 version: '3'

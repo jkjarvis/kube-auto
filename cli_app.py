@@ -1,4 +1,3 @@
-import argparse
 import yaml
 import socket
 import random
@@ -39,19 +38,29 @@ def remove_none_values(d):
     # Recursively remove keys with None values from the dictionary
     return {k: remove_none_values(v) if type(v) == dict else v for k, v in d.items() if v is not None}
 
+def generate_service_config(service):
+        if service.get("ports"):
+            is_port_open(service.get('ports'))
+        
+        service_config = { service["service_name"] : {
+            "image": service.get("image"),
+            "ports": [service.get("ports")],
+            "volumes": [service.get("volumes")] 
+        }
+        }
+
+        print(service_config)
+        return service_config
+
+
 def generate_yaml_file(output_file, requirements):
-    is_port_open(requirements.get('port'))
-    
+    print("keys ",requirements.keys())
     # Create a dictionary with deployment configuration
     deployment_config = {
         "version": "3",
-        "services": {
-        requirements.service_name if requirements.get("service_name") else "app": {
-            "image": requirements.get("image"),
-            "ports": [requirements.get("port")],
-            "volumes": [f'/tmp:{requirements.get("volume")}'] if requirements.get("volume") else None 
-        }
-        },
+        "services": [
+            generate_service_config(requirements[i]) for i in requirements.keys()
+        ],
         # Add more deployment options as needed
     }
 
@@ -62,17 +71,33 @@ def generate_yaml_file(output_file, requirements):
     with open(output_file, 'w') as yaml_file:
         yaml.dump(filtered_config, yaml_file, default_flow_style=False)
 
+
+def prompt_user(yml_config, service_number):
+    service_name = input(f"Enter service name (Leave empty if want to use 'service_{service_number}'): ") or f"service_{service_number}"
+    image = input(f"Image for service {service_number}: ")
+    image_tag = input(f"Image tag for service {service_number} (Leave empty for 'latest'): ") or "latest"
+    port_mapping = input(f"Enter port mapping in format 'HostPort : ContainerPort' for service {service_number} (Leave empty if do not want port mapping): ") or None
+    volume_mapping = input(f"Enter volume mapping in format 'HostPath : VolumePath' for service {service_number} (Leave empty if do not want volume mapping): ") or None
+
+    yml_config[service_name] = {
+        "service_name": service_name,
+        "image": f"{image}:{image_tag}",
+        "port_mapping": port_mapping,
+        "volume_mapping": volume_mapping
+    }
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Generate YAML file for deployment.')
-    parser.add_argument('--image', required=True, help='Docker image name')
-    parser.add_argument('--port', help='Port to expose in the container')
-    parser.add_argument('--volume', help='Conainer volume to map to')
+    deployment_yml_config = {}
+    number_of_services = int(input("How many services do you want to create ? (Please type in whole number): "))
 
+    for i in range(number_of_services):
+        print("i is ",i)
+        prompt_user(deployment_yml_config, i+1)
 
-    args = vars(parser.parse_args())
-
+    print(deployment_yml_config)
     output_file = 'deployment.yaml'
-    generate_yaml_file(output_file, args)
+    generate_yaml_file(output_file, deployment_yml_config)
     print(f'YAML file generated: {output_file}')
 
 if __name__ == "__main__":
